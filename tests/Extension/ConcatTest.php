@@ -19,7 +19,7 @@ class ConcatTest extends TestCase
     /** @var Concat */
     private $test;
 
-    public function setUp()
+    protected function setUp(): void
     {
         $this->test = new Concat();
     }

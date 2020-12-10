@@ -26,7 +26,7 @@ class GeneratorTest extends TestCase
     private $testClass;
     private $classDefinition;
 
-    public function setUp()
+    protected function setUp(): void
     {
         $this->generatorClass = new \ReflectionClass(Generator::class);
         $this->testClass = new Generator([]);

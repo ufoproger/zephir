@@ -34,7 +34,7 @@ class VariableTest extends TestCase
     /** @var CompiledExpression */
     private $compiledExpr;
 
-    public function setUp()
+    protected function setUp(): void
     {
         $this->test = new Variable();
         $this->readDetector = new ReadDetector();

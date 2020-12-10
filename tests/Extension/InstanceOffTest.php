@@ -19,7 +19,7 @@ class InstanceOffTest extends TestCase
     /** @var InstanceOff */
     private $test;
 
-    public function setUp()
+    protected function setUp(): void
     {
         $this->test = new InstanceOff();
     }

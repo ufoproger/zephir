@@ -21,7 +21,7 @@ class ExitDieTest extends TestCase
     /**
      * {@inheritdoc}
      */
-    public function setUp()
+    protected function setUp(): void
     {
         $this->phpBinary = \constant('PHP_BINARY');
         /* If we use phpdbg, you need to add options -qrr */

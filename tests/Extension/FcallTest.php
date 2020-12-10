@@ -20,7 +20,7 @@ class FcallTest extends TestCase
     /** @var Fcall */
     private $test;
 
-    public function setUp()
+    protected function setUp(): void
     {
         $this->test = new Fcall();
     }

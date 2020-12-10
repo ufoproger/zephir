@@ -19,7 +19,7 @@ class ArraySearchTest extends TestCase
     /** @var ArraySearch */
     private $test;
 
-    public function setUp()
+    protected function setUp(): void
     {
         $this->test = new ArraySearch();
     }

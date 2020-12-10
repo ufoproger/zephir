@@ -19,7 +19,7 @@ class IntMethodTest extends TestCase
     /** @var IntMethods */
     private $test;
 
-    public function setUp()
+    protected function setUp(): void
     {
         $this->test = new IntMethods();
     }

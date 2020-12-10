@@ -22,7 +22,7 @@ class GlobalsTest extends TestCase
     /** @var \Stub\Globals */
     private $test;
 
-    public function setUp()
+    protected function setUp(): void
     {
         $this->test = new Globals();
     }

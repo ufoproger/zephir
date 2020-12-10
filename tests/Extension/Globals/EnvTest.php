@@ -16,7 +16,7 @@ use Stub\Globals\Env;
 
 class EnvTest extends TestCase
 {
-    public function setUp()
+    protected function setUp(): void
     {
         parent::setUp();
 

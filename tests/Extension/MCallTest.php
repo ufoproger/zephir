@@ -22,7 +22,7 @@ class MCallTest extends TestCase
     /** @var Mcall */
     private $test;
 
-    public function setUp()
+    protected function setUp(): void
     {
         $this->test = new Mcall();
     }

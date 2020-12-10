@@ -20,7 +20,7 @@ class CompilerFormatterTest extends TestCase
     /** @var Config */
     private $config;
 
-    public function setUp()
+    protected function setUp(): void
     {
         $this->config = new Config();
     }

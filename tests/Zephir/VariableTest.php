@@ -25,7 +25,7 @@ class VariableTest extends TestCase
     /** @var Variable */
     private $zephirVar;
 
-    public function setUp()
+    protected function setUp(): void
     {
         $this->zephirVar = new Variable('object', 'UnitTest');
     }

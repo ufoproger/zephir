@@ -33,7 +33,7 @@ class PregMatchOptimizerTest extends TestCase
     /** @var MockObject|Variable */
     protected $variableMock;
 
-    public function setUp()
+    protected function setUp(): void
     {
         $this->callMock = $this->createMock(Call::class);
         $this->contextMock = $this->createMock(CompilationContext::class);

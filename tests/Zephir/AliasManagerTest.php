@@ -19,7 +19,7 @@ class AliasManagerTest extends TestCase
     /** @var \Zephir\AliasManager */
     private $testAliasMgr;
 
-    public function setUp()
+    protected function setUp(): void
     {
         $this->testAliasMgr = new AliasManager();
     }

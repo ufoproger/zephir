@@ -20,7 +20,7 @@ class DocblockTest extends TestCase
     /** @var Docblock */
     private $docblock;
 
-    public function setUp()
+    protected function setUp(): void
     {
         $this->docblock = new Docblock();
     }

@@ -26,14 +26,14 @@ class ConfigTest extends TestCase
     /** @var Config */
     private $config;
 
-    public function setUp()
+    protected function setUp(): void
     {
         /* Store the current directory before to be change */
         $this->pwd = getcwd();
         $this->config = new Config();
     }
 
-    public function tearDown()
+    protected function tearDown(): void
     {
         if (getcwd() != $this->pwd) {
             chdir($this->pwd);

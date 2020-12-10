@@ -19,7 +19,7 @@ class AssignTest extends TestCase
     /** @var Assign */
     private $test;
 
-    public function setUp()
+    protected function setUp(): void
     {
         $this->test = new Assign();
     }

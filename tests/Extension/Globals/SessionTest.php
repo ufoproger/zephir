@@ -19,7 +19,7 @@ class SessionTest extends TestCase
     /**
      * This method is called before a test is executed.
      */
-    public function setUp()
+    protected function setUp(): void
     {
         parent::setUp();
 
