@@ -20,14 +20,14 @@ class ServerRequestFactoryTest extends TestCase
     private $get;
     private $post;
 
-    protected function setUp()
+    protected function setUp(): void
     {
         $this->server = $_SERVER;
         $this->get = $_GET;
         $this->post = $_POST;
     }
 
-    protected function tearDown()
+    protected function tearDown(): void
     {
         $_SERVER = $this->server;
         $_GET = $this->get;

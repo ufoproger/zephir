@@ -212,7 +212,7 @@ class IsPhpVersionTest extends TestCase
      *
      * @throws \Throwable
      */
-    protected function onNotSuccessfulTest(\Throwable $error)
+    protected function onNotSuccessfulTest(\Throwable $error): void
     {
         $phpVer = sprintf(
             'PHP_VERSION_ID:%d(%d.%d.%d)',
