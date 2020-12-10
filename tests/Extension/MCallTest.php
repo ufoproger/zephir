@@ -98,8 +98,8 @@ class MCallTest extends TestCase
         $this->assertNumberOfRequiredParameters(0);
 
         $this->assertTrue($this->getMethodFirstParameter()->isArray());
-        $this->assertSame($this->test->arrayParamWithDefaultEmptyArray(), []);
-        $this->assertSame($this->test->arrayParamWithDefaultEmptyArray([1]), [1]);
+        $this->assertSame($this->test->testArrayParamWithDefaultEmptyArray(), []);
+        $this->assertSame($this->test->testArrayParamWithDefaultEmptyArray([1]), [1]);
     }
 
     public function testArrayParamWithDefaultNullValue()
@@ -108,8 +108,8 @@ class MCallTest extends TestCase
         $this->assertNumberOfRequiredParameters(0);
 
         $this->assertTrue($this->getMethodFirstParameter()->isArray());
-        $this->assertSame($this->test->arrayParamWithDefaultNullValue(), []);
-        $this->assertSame($this->test->arrayParamWithDefaultNullValue([1]), [1]);
+        $this->assertSame($this->test->testArrayParamWithDefaultNullValue(), []);
+        $this->assertSame($this->test->testArrayParamWithDefaultNullValue([1]), [1]);
     }
 
     public function testArrayParam()
@@ -118,8 +118,8 @@ class MCallTest extends TestCase
         $this->assertNumberOfRequiredParameters(1);
 
         $this->assertTrue($this->getMethodFirstParameter()->isArray());
-        $this->assertSame($this->test->arrayParam([]), []);
-        $this->assertSame($this->test->arrayParam([1, 2, 3]), [1, 2, 3]);
+        $this->assertSame($this->test->testArrayParam([]), []);
+        $this->assertSame($this->test->testArrayParam([1, 2, 3]), [1, 2, 3]);
     }
 
     public function testObjectParamCastStdClass()
@@ -128,7 +128,7 @@ class MCallTest extends TestCase
         $this->assertNumberOfRequiredParameters(1);
 
         $this->assertSame('stdClass', $this->getMethodFirstParameter()->getClass()->getName());
-        $this->assertInstanceOf('stdClass', $this->test->objectParamCastStdClass(new \stdClass()));
+        $this->assertInstanceOf('stdClass', $this->test->testObjectParamCastStdClass(new \stdClass()));
     }
 
     public function testObjectParamCastOoParam()
@@ -137,7 +137,7 @@ class MCallTest extends TestCase
         $this->assertNumberOfRequiredParameters(1);
 
         $this->assertSame('Stub\Oo\Param', $this->getMethodFirstParameter()->getClass()->getName());
-        $this->assertInstanceOf('Stub\Oo\Param', $this->test->objectParamCastOoParam(new \Stub\Oo\Param()));
+        $this->assertInstanceOf('Stub\Oo\Param', $this->test->testObjectParamCastOoParam(new \Stub\Oo\Param()));
     }
 
     /**
