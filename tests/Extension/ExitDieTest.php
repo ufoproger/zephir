@@ -39,8 +39,7 @@ class ExitDieTest extends TestCase
         parent::setUp();
     }
 
-    /** @test */
-    public function shouldExitWthoutAnyMessage()
+    public function testShouldExitWthoutAnyMessage()
     {
         $testfile = __DIR__.'/../fixtures/exit.php';
         $command = "$this->phpBinary $testfile";
@@ -61,8 +60,7 @@ class ExitDieTest extends TestCase
         ));
     }
 
-    /** @test */
-    public function shouldExitWthProvidedStatusMessage()
+    public function testShouldExitWthProvidedStatusMessage()
     {
         $testfile = __DIR__.'/../fixtures/exit_string.php';
         $statusMessage = 'Hello World';
@@ -84,8 +82,7 @@ class ExitDieTest extends TestCase
         ));
     }
 
-    /** @test */
-    public function shouldExitWthProvidedStatusCode()
+    public function testShouldExitWthProvidedStatusCode()
     {
         $testfile = __DIR__.'/../fixtures/exit_int.php';
         $statusCode = 220;

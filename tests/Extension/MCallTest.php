@@ -92,8 +92,7 @@ class MCallTest extends TestCase
         $this->assertFalse($this->test->optionalParameterBoolean(false));
     }
 
-    /** @test */
-    public function arrayParamWithDefaultEmptyArray()
+    public function testArrayParamWithDefaultEmptyArray()
     {
         $this->assertNumberOfParameters(1);
         $this->assertNumberOfRequiredParameters(0);
@@ -103,8 +102,7 @@ class MCallTest extends TestCase
         $this->assertSame($this->test->arrayParamWithDefaultEmptyArray([1]), [1]);
     }
 
-    /** @test */
-    public function arrayParamWithDefaultNullValue()
+    public function testArrayParamWithDefaultNullValue()
     {
         $this->assertNumberOfParameters(1);
         $this->assertNumberOfRequiredParameters(0);
@@ -114,8 +112,7 @@ class MCallTest extends TestCase
         $this->assertSame($this->test->arrayParamWithDefaultNullValue([1]), [1]);
     }
 
-    /** @test */
-    public function arrayParam()
+    public function testArrayParam()
     {
         $this->assertNumberOfParameters(1);
         $this->assertNumberOfRequiredParameters(1);
@@ -125,8 +122,7 @@ class MCallTest extends TestCase
         $this->assertSame($this->test->arrayParam([1, 2, 3]), [1, 2, 3]);
     }
 
-    /**  @test */
-    public function objectParamCastStdClass()
+    public function testObjectParamCastStdClass()
     {
         $this->assertNumberOfParameters(1);
         $this->assertNumberOfRequiredParameters(1);
@@ -135,8 +131,7 @@ class MCallTest extends TestCase
         $this->assertInstanceOf('stdClass', $this->test->objectParamCastStdClass(new \stdClass()));
     }
 
-    /** @test */
-    public function objectParamCastOoParam()
+    public function testObjectParamCastOoParam()
     {
         $this->assertNumberOfParameters(1);
         $this->assertNumberOfRequiredParameters(1);

@@ -30,8 +30,7 @@ class VariableTest extends TestCase
         $this->zephirVar = new Variable('object', 'UnitTest');
     }
 
-    /** @test */
-    public function shouldSetProperties()
+    public function testShouldSetProperties()
     {
         $context = new CompilationContext();
         $branch = new Branch();
@@ -204,8 +203,7 @@ class VariableTest extends TestCase
         $this->assertSame($branch, $this->zephirVar->getPossibleValueBranch());
     }
 
-    /** @test */
-    public function shouldEnableDefaultAutoInitValue()
+    public function testShouldEnableDefaultAutoInitValue()
     {
         $numericTypes = [
             'char', 'boolean', 'bool', 'int', 'uint', 'long', 'ulong',

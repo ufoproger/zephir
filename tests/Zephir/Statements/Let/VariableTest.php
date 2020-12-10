@@ -71,14 +71,13 @@ class VariableTest extends TestCase
     }
 
     /**
-     * @test
      * @dataProvider exceptionTestProvider
      *
      * @param array    $statement
      * @param string   $message     - Expected error message
      * @param callable $setProperty - Callback func to set required for test property
      */
-    public function throwsExceptionForWrongVariables(array $statement, string $message, callable $setProperty)
+    public function testThrowsExceptionForWrongVariables(array $statement, string $message, callable $setProperty)
     {
         $zephirVariable = new ZephirVariable('variable', 'foo');
         // call necessary setters for test case
