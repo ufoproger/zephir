@@ -1398,7 +1398,7 @@ final class ClassDefinition
                         } else {
                             $codePrinter->output(
                                 sprintf(
-                                    "\tPHP_ABSTRACT_ME(%s_%s, %s, NULL)",
+                                    "\tPHP_ABSTRACT_ME(%s_%s, %s, arginfo__null)",
                                     $this->getCNamespace(),
                                     $this->getName(),
                                     $method->getName()
