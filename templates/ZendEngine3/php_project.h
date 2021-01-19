@@ -65,3 +65,10 @@ extern zend_module_entry %PROJECT_LOWER_SAFE%_module_entry;
 #define phpext_%PROJECT_LOWER%_ptr &%PROJECT_LOWER_SAFE%_module_entry
 
 #endif
+
+#if PHP_VERSION_ID >= 80000
+ZEND_BEGIN_ARG_INFO_EX(arginfo__null, 0, 0, 0)
+ZEND_END_ARG_INFO()
+#else
+#define arginfo__null NULL
+#endif
