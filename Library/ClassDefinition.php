@@ -1379,7 +1379,7 @@ final class ClassDefinition
                         } else {
                             $codePrinter->output(
                                 sprintf(
-                                    "\tZEND_FENTRY(%s, NULL, NULL, ZEND_ACC_STATIC|ZEND_ACC_ABSTRACT|ZEND_ACC_PUBLIC)",
+                                    "\tZEND_FENTRY(%s, NULL, arginfo__null, ZEND_ACC_STATIC|ZEND_ACC_ABSTRACT|ZEND_ACC_PUBLIC)",
                                     $method->getName()
                                 )
                             );
