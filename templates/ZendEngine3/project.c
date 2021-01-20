@@ -58,7 +58,7 @@ static void php_zephir_init_globals(zend_%PROJECT_LOWER%_globals *%PROJECT_LOWER
 	%PROJECT_LOWER%_globals->initialized = 0;
 
 	/* Cache Enabled */
-	%PROJECT_LOWER%_globals->cache_enabled = 1;
+	%PROJECT_LOWER%_globals->cache_enabled = 0;
 
 	/* Recursive Lock */
 	%PROJECT_LOWER%_globals->recursive_lock = 0;
