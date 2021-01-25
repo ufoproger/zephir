@@ -504,6 +504,8 @@ int zephir_call_class_method_aparams(zval *return_value, zend_class_entry *ce, z
 	zephir_fcall_cache_entry **cache_entry, int cache_slot,
 	uint32_t param_count, zval **params)
 {
+	return dao_call_method_with_params(return_value, object, ce, type, method_name, method_len, param_count, params);
+
 	int status;
 
 #ifndef ZEPHIR_RELEASE
@@ -640,4 +642,173 @@ void zephir_eval_php(zval *str, zval *retval_ptr, char *context)
 		destroy_op_array(new_op_array);
 		efree_size(new_op_array, sizeof(zend_op_array));
 	}
+}
+
+/**
+ * Functions from Dao framework.
+ */
+static zend_never_inline zend_function *dao_get_function(zend_class_entry *scope, zend_string *function_name)
+{
+	zval *func;
+	zend_function *fbc;
+
+	func = zend_hash_find(&scope->function_table, function_name);
+	if (func != NULL) {
+		fbc = Z_FUNC_P(func);
+		return fbc;
+	}
+
+	return NULL;
+}
+
+static zend_result dao_call_user_function(zend_function *fn, zend_class_entry *called_scope, zval *object, zval *function_name, zval *retval_ptr, uint32_t param_count, zval params[])
+{
+	zend_fcall_info fci;
+	zend_fcall_info_cache fcic;
+
+	fci.size = sizeof(fci);
+	fci.object = object ? Z_OBJ_P(object) : NULL;
+	ZVAL_COPY_VALUE(&fci.function_name, function_name);
+	fci.retval = retval_ptr;
+	fci.param_count = param_count;
+	fci.params = params;
+
+	fci.named_params = NULL;
+
+	if (fn != NULL) {
+		fcic.function_handler = fn;
+		fcic.object = object ? Z_OBJ_P(object) : NULL;
+		fcic.called_scope = called_scope;
+
+		return zend_call_function(&fci, &fcic);
+	}
+	return zend_call_function(&fci, NULL);
+}
+
+int dao_call_method_with_params(zval *retval, zval *object, zend_class_entry *ce, zephir_call_type type, const char *method_name, uint method_len, uint param_count, zval *params[])
+{
+	zval func_name = {}, ret = {}, *retval_ptr = (retval != NULL) ? retval : &ret, obj = {};
+	zval *arguments;
+	zend_function *fbc = NULL;
+
+	int i, status;
+
+	if (type != zephir_fcall_function) {
+		if (type != zephir_fcall_ce && type != zephir_fcall_self && type != zephir_fcall_static) {
+			if (object == NULL || Z_TYPE_P(object) != IS_OBJECT) {
+				zephir_throw_exception_format(spl_ce_RuntimeException, "Trying to call method %s on a non-object", method_name);
+				return FAILURE;
+			}
+		}
+
+		if (object == NULL || Z_TYPE_P(object) != IS_OBJECT) {
+			if (zend_get_this_object(EG(current_execute_data))){
+				ZVAL_OBJ(&obj, zend_get_this_object(EG(current_execute_data)));
+				object = &obj;
+			}
+		}
+
+		if (!ce && object && Z_TYPE_P(object) == IS_OBJECT) {
+			ce = Z_OBJCE_P(object);
+		}
+		assert(ce != NULL);
+
+		zend_string *str_methodname = zend_string_init(method_name, method_len, 0);
+		if (type != zephir_fcall_parent) {
+			fbc = dao_get_function(ce, str_methodname);
+		} else {
+			fbc = dao_get_function(ce->parent, str_methodname);
+		}
+		if (fbc) {
+			ZVAL_STR(&func_name, str_methodname);
+		} else {
+			zend_string_release(str_methodname);
+
+			switch (type) {
+				case zephir_fcall_ce:
+					array_init_size(&func_name, 2);
+					add_next_index_string(&func_name, ce->name->val);
+					add_next_index_stringl(&func_name, method_name, method_len);
+					break;
+				case zephir_fcall_parent:
+					if (dao_memnstr_str_str(method_name, method_len, "::", 2)) {
+						dao_fast_explode_str_str(&func_name, "::", 2, method_name, method_len);
+					} else {
+						array_init_size(&func_name, 2);
+						add_next_index_string(&func_name, i_parent);
+						add_next_index_stringl(&func_name, method_name, method_len);
+					}
+					break;
+				case zephir_fcall_self:
+					assert(ce != NULL);
+					array_init_size(&func_name, 2);
+					add_next_index_string(&func_name, i_self);
+					add_next_index_stringl(&func_name, method_name, method_len);
+					break;
+				case zephir_fcall_method:
+					array_init_size(&func_name, 2);
+					Z_TRY_ADDREF_P(object);
+					add_next_index_zval(&func_name, object);
+					add_next_index_stringl(&func_name, method_name, method_len);
+					break;
+				default:
+					zephir_throw_exception_format(spl_ce_RuntimeException, "Error call type %d for cmethod %s", type, method_name);
+					return FAILURE;
+			}
+		}
+	} else {
+		ZVAL_STRINGL(&func_name, method_name, method_len);
+	}
+
+	arguments = param_count ? safe_emalloc(sizeof(zval), param_count, 0) : NULL;
+
+	i = 0;
+	while(i < param_count) {
+		if (params[i] && Z_TYPE_P(params[i]) > IS_NULL) {
+			ZVAL_COPY_VALUE(&arguments[i], params[i]);
+		} else {
+			ZVAL_NULL(&arguments[i]);
+		}
+		i++;
+	}
+
+	if (
+		(status = dao_call_user_function(fbc, ce, object, &func_name, retval_ptr, param_count, arguments)) == FAILURE || EG(exception)
+	) {
+		status = FAILURE;
+		ZVAL_NULL(retval_ptr);
+		if (!EG(exception)) {
+			switch (type) {
+				case zephir_fcall_function:
+					zend_error(E_ERROR, "Call to undefined function %s()", method_name);
+					break;
+				case zephir_fcall_parent:
+					zend_error(E_ERROR, "Call to undefined method parent::%s()", method_name);
+					break;
+				case zephir_fcall_self:
+					zend_error(E_ERROR, "Call to undefined method self::%s()", method_name);
+					break;
+				case zephir_fcall_static:
+					zend_error(E_ERROR, "Call to undefined function static::%s()", method_name);
+					break;
+				case zephir_fcall_ce:
+					zend_error(E_ERROR, "Call to undefined method %s::%s()", ce->name->val, method_name);
+					break;
+				case zephir_fcall_method:
+					zend_error(E_ERROR, "Call to undefined method %s::%s()", Z_OBJCE_P(object)->name->val, method_name);
+					break;
+				default:
+					zend_error(E_ERROR, "Call to undefined method ?::%s()", method_name);
+			}
+		}
+	}
+	zval_ptr_dtor(&func_name);
+	efree(arguments);
+	if (retval == NULL) {
+		if (!Z_ISUNDEF(ret)) {
+			zval_ptr_dtor(&ret);
+		}
+	}
+
+	return status;
 }

@@ -1412,3 +1412,35 @@ void zephir_string_to_hex(zval *return_value, zval *var)
 		zval_dtor(var);
 	}
 }
+
+/**
+ * Functions from Dao framework.
+ */
+
+/**
+ * Fast call to explode php function
+ */
+void dao_fast_explode_str_str(zval *result, const char *delimiter, unsigned int delimiter_length, const char *str, unsigned int str_length)
+{
+	zend_string *delim, *s;
+
+	delim = zend_string_init(delimiter, delimiter_length, 0);
+	s = zend_string_init(str, str_length, 0);
+
+	array_init(result);
+	php_explode(delim, s, result, LONG_MAX);
+	zend_string_release(s);
+	zend_string_release(delim);
+}
+
+/**
+ * Check if a string is contained into another
+ */
+int dao_memnstr_str_str(const char *haystack, unsigned int haystack_length, char *needle, unsigned int needle_length) {
+
+	if (haystack && haystack_length >= needle_length) {
+		return php_memnstr(haystack, needle, needle_length, haystack + strlen(haystack)) ? 1 : 0;
+	}
+
+	return 0;
+}

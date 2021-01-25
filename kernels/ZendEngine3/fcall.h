@@ -465,4 +465,24 @@ static inline void zephir_set_called_scope(zend_execute_data *ex, zend_class_ent
 	}
 }
 
+/**
+ * Functions from Dao framework.
+ */
+
+int dao_call_user_func_args(zval *retval, zval *handler, zval *params, int param_count);
+int dao_call_user_func_params(zval *retval, zval *handler, int param_count, zval *params[]);
+int dao_call_user_func_array(zval *retval, zval *handler, zval *params);
+
+/** Fast call_user_func_array/call_user_func */
+static inline int dao_call_user_func_array_noex(zval *retval, zval *handler, zval *params)
+{
+  if (zend_is_callable(handler, 0, NULL)) {
+    return dao_call_user_func_array(retval, handler, params);
+  }
+
+  return FAILURE;
+}
+
+int dao_call_method_with_params(zval *retval, zval *object, zend_class_entry *ce, zephir_call_type type, const char *method_name, uint method_len, uint param_count, zval *params[]);
+
 #endif /* ZEPHIR_KERNEL_FCALL_H */

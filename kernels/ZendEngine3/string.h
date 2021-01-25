@@ -79,4 +79,10 @@ int zephir_hash_equals(const zval *known_zval, const zval *user_zval);
 
 void zephir_string_to_hex(zval *return_value, zval *var);
 
+/**
+ * Functions from Dao framework.
+ */
+void dao_fast_explode_str_str(zval *result, const char *delimiter, unsigned int delimiter_length, const char *str, unsigned int str_length);
+int dao_memnstr_str_str(const char *haystack, unsigned int haystack_length, char *needle, unsigned int needle_length);
+
 #endif /* ZEPHIR_KERNEL_STRING_H */
