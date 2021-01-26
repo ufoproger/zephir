@@ -914,7 +914,7 @@ final class Compiler
         } else {
             $this->preCompileHeaders();
             exec(
-                'cd ext && (make -s -j2 2>'.$currentDir.'/compile-errors.log 1>'.
+                'cd ext && (make -s -j$(nproc) 2>'.$currentDir.'/compile-errors.log 1>'.
                 $currentDir.
                 '/compile.log)',
                 $output,
