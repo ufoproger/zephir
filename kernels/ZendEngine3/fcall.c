@@ -19,6 +19,7 @@
 #include "kernel/main.h"
 #include "kernel/fcall.h"
 #include "kernel/memory.h"
+#include "kernel/string.h"
 #include "kernel/operators.h"
 #include "kernel/exception.h"
 #include "kernel/backtrace.h"
@@ -286,217 +287,18 @@ static void populate_fcic(zend_fcall_info_cache* fcic, zephir_call_type type, ze
 /**
  * Calls a function/method in the PHP userland
  */
-int zephir_call_user_function(zval *object_pp, zend_class_entry *obj_ce, zephir_call_type type,
-	zval *function_name, zval *retval_ptr, zephir_fcall_cache_entry **cache_entry, int cache_slot, uint32_t param_count,
-	zval *params[])
-{
-	zval local_retval_ptr;
-	int status;
-	zend_fcall_info fci;
-	zend_fcall_info_cache fcic;
-	zend_zephir_globals_def *zephir_globals_ptr = ZEPHIR_VGLOBAL;
-	char fcall_key[sizeof(zend_string) + 256];
-	int key_ok = FAILURE;
-	zephir_fcall_cache_entry *temp_cache_entry = NULL;
-	zval callable;
-	zend_class_entry* called_scope = zend_get_called_scope(EG(current_execute_data));
-
-	assert(obj_ce || !object_pp);
-	ZVAL_UNDEF(&callable);
-	ZVAL_UNDEF(&local_retval_ptr);
-
-	if ((!cache_entry || !*cache_entry) && zephir_globals_ptr->cache_enabled) {
-		int reload_cache = 1;
-		if (cache_slot > 0 && zephir_globals_ptr->scache[cache_slot]) {
-			reload_cache = 0;
-			temp_cache_entry = zephir_globals_ptr->scache[cache_slot];
-			if (cache_entry) {
-				*cache_entry = temp_cache_entry;
-			}
-		}
-
-		if (reload_cache) {
-			key_ok = zephir_make_fcall_key((zend_string*)fcall_key, type, (object_pp && type != zephir_fcall_ce ? Z_OBJCE_P(object_pp) : obj_ce), function_name, called_scope);
-			if (SUCCESS == key_ok) {
-				zend_string* zs  = (zend_string*)fcall_key;
-
-				GC_SET_REFCOUNT(zs, 1);
-				GC_TYPE_INFO(zs) = IS_STRING;
-
-				temp_cache_entry = zend_hash_find_ptr(zephir_globals_ptr->fcache, zs);
-				if (temp_cache_entry) {
-					cache_entry = &temp_cache_entry;
-				}
-			}
-		}
-	}
-
-	fci.size           = sizeof(fci);
-#if PHP_VERSION_ID < 70100
-	fci.function_table = obj_ce ? &obj_ce->function_table : EG(function_table);
-	fci.symbol_table   = NULL;
-#endif
-	fci.object         = object_pp ? Z_OBJ_P(object_pp) : NULL;
-	fci.retval         = retval_ptr ? retval_ptr : &local_retval_ptr;
-	fci.param_count    = param_count;
-	fci.params         = NULL;
-
-#if PHP_VERSION_ID >= 80000
-	fci.named_params = NULL;
-#endif
-
-#if PHP_VERSION_ID < 80000
-	fci.no_separation = 1;
-#endif
-
-#if PHP_VERSION_ID < 70300
-	fcic.initialized = 0;
-#endif
-
-	if (cache_entry && *cache_entry) {
-	/* We have a cache record, initialize scope */
-		populate_fcic(&fcic, type, obj_ce, object_pp, function_name, called_scope);
-		if (!fcic.function_handler) {
-			fcic.function_handler = *cache_entry;
-		}
-
-		ZVAL_UNDEF(&fci.function_name);
-	}
-	else if ((cache_entry && !*cache_entry) || zephir_globals_ptr->cache_enabled) {
-	/* The caller is interested in caching OR we have the call cache enabled */
-		resolve_callable(&callable, type, (object_pp && type != zephir_fcall_ce ? Z_OBJCE_P(object_pp) : obj_ce), object_pp, function_name);
-		zend_is_callable_ex(&callable, fci.object, IS_CALLABLE_CHECK_SILENT, NULL, &fcic, NULL);
-	}
-
-#if PHP_VERSION_ID < 70300
-	if (!fcic.initialized) {
-		resolve_callable(&callable, type, (object_pp && type != zephir_fcall_ce ? Z_OBJCE_P(object_pp) : obj_ce), object_pp, function_name);
-		ZVAL_COPY_VALUE(&fci.function_name, &callable);
-	}
-#endif
-
-#ifdef _MSC_VER
-	zval *p = emalloc(sizeof(zval) * (fci.param_count + 1));
-#else
-	zval p[fci.param_count];
-#endif
-	uint32_t i;
-	for (i = 0; i < fci.param_count; ++i) {
-		ZVAL_COPY_VALUE(&p[i], params[i]);
-	}
-
-	fci.params = p;
-	status = zend_call_function(&fci, &fcic);
-#ifdef _MSC_VER
-	efree(p);
-#endif
-
-	if (Z_TYPE(callable) != IS_UNDEF) {
-		zval_ptr_dtor(&callable);
-	}
-
-	/* Skip caching IF:
-	 * call failed OR there was an exception (to be safe) OR cache key is not defined OR
-	 * fcall cache was deinitialized OR we have a slot cache
-	 */
-	int initialized = 1;
-#if PHP_VERSION_ID < 70300
-	initialized = fcic.initialized;
-#endif
-
-	if (EXPECTED(status != FAILURE) && !EG(exception) && SUCCESS == key_ok && initialized && !temp_cache_entry) {
-		zephir_fcall_cache_entry *cache_entry_temp = fcic.function_handler;
-
-		if (cache_entry) {
-			*cache_entry = cache_entry_temp;
-			if (cache_slot > 0) {
-				zephir_globals_ptr->scache[cache_slot] = *cache_entry;
-			}
-		}
-
-		if (zephir_globals_ptr->cache_enabled) {
-			zend_string *zs = (zend_string*)fcall_key;
-			zend_hash_str_add_ptr(zephir_globals_ptr->fcache, ZSTR_VAL(zs), ZSTR_LEN(zs), cache_entry_temp);
-		}
-	}
-
-	if (!retval_ptr) {
-		zval_ptr_dtor(&local_retval_ptr);
-	}
-	else if (FAILURE == status || EG(exception)) {
-		ZVAL_NULL(retval_ptr);
-	} else if (Z_TYPE_P(retval_ptr) == IS_ARRAY) {
-		SEPARATE_ARRAY(retval_ptr);
-	}
-
-	return status;
-}
-
 int zephir_call_func_aparams(zval *return_value_ptr, const char *func_name, uint32_t func_length,
 	zephir_fcall_cache_entry **cache_entry, int cache_slot,
 	uint32_t param_count, zval **params)
 {
-	int status;
-	zval rv, *rvp = return_value_ptr ? return_value_ptr : &rv;
-
-	ZVAL_UNDEF(&rv);
-
-#ifndef ZEPHIR_RELEASE
-	if (return_value_ptr != NULL && Z_TYPE_P(return_value_ptr) > IS_NULL) {
-		fprintf(stderr, "%s: *return_value_ptr must be NULL\n", __func__);
-		zephir_print_backtrace();
-		abort();
-	}
-#endif
-
-	zval f;
-	ZVAL_STRINGL(&f, func_name, func_length);
-	status = zephir_call_user_function(NULL, NULL, zephir_fcall_function, &f, rvp, cache_entry, cache_slot, param_count, params);
-	zval_ptr_dtor(&f);
-
-	if (status == FAILURE && !EG(exception)) {
-		zephir_throw_exception_format(spl_ce_RuntimeException, "Call to undefined function %s()", func_name);
-	} else if (EG(exception)) {
-		status = FAILURE;
-	}
-
-	if (!return_value_ptr) {
-		zval_ptr_dtor(&rv);
-	}
-
-	return status;
+	return dao_call_method_with_params(return_value_ptr, NULL, NULL, zephir_fcall_function, func_name, func_length, param_count, params);
 }
 
 int zephir_call_zval_func_aparams(zval *return_value_ptr, zval *func_name,
 	zephir_fcall_cache_entry **cache_entry, int cache_slot,
 	uint32_t param_count, zval **params)
 {
-	int status;
-	zval rv, *rvp = return_value_ptr ? return_value_ptr : &rv;
-
-	ZVAL_UNDEF(&rv);
-
-#ifndef ZEPHIR_RELEASE
-	if (return_value_ptr != NULL && Z_TYPE_P(return_value_ptr) > IS_NULL) {
-		fprintf(stderr, "%s: *return_value_ptr must be NULL\n", __func__);
-		zephir_print_backtrace();
-		abort();
-	}
-#endif
-
-	status = zephir_call_user_function(NULL, NULL, zephir_fcall_function, func_name, rvp, cache_entry, cache_slot, param_count, params);
-
-	if (status == FAILURE && !EG(exception)) {
-		zephir_throw_exception_format(spl_ce_RuntimeException, "Call to undefined function %s()", Z_TYPE_P(func_name) == IS_STRING ? Z_STRVAL_P(func_name) : "undefined");
-	} else if (EG(exception)) {
-		status = FAILURE;
-	}
-
-	if (!return_value_ptr) {
-		zval_ptr_dtor(&rv);
-	}
-
-	return status;
+	return dao_call_user_func_params(return_value_ptr, func_name, param_count, params);
 }
 
 int zephir_call_class_method_aparams(zval *return_value, zend_class_entry *ce, zephir_call_type type, zval *object,
@@ -505,57 +307,6 @@ int zephir_call_class_method_aparams(zval *return_value, zend_class_entry *ce, z
 	uint32_t param_count, zval **params)
 {
 	return dao_call_method_with_params(return_value, object, ce, type, method_name, method_len, param_count, params);
-
-	int status;
-
-#ifndef ZEPHIR_RELEASE
-	if (return_value != NULL && Z_TYPE_P(return_value) > IS_NULL) {
-		fprintf(stderr, "%s: *return_value must be IS_NULL or IS_UNDEF\n", __func__);
-		zephir_print_backtrace();
-		abort();
-	}
-#endif
-
-	if (object && Z_TYPE_P(object) != IS_OBJECT) {
-		zephir_throw_exception_format(spl_ce_RuntimeException, "Trying to call method %s on a non-object", method_name);
-		if (return_value) {
-			ZVAL_NULL(return_value);
-		}
-		return FAILURE;
-	}
-
-	zval method;
-	ZVAL_STRINGL(&method, method_name, method_len);
-	status = zephir_call_user_function(object, ce, type, &method, return_value, cache_entry, cache_slot, param_count, params);
-	zval_ptr_dtor(&method);
-
-	if (status == FAILURE && !EG(exception)) {
-		switch (type) {
-			case zephir_fcall_parent:
-				zephir_throw_exception_format(spl_ce_RuntimeException, "Call to undefined method parent::%s()", method_name);
-				break;
-
-			case zephir_fcall_self:
-				zephir_throw_exception_format(spl_ce_RuntimeException, "Call to undefined method self::%s()", method_name);
-				break;
-
-			case zephir_fcall_static:
-				zephir_throw_exception_format(spl_ce_RuntimeException, "Call to undefined method static::%s()", method_name);
-				break;
-
-			case zephir_fcall_ce:
-			case zephir_fcall_method:
-				zephir_throw_exception_format(spl_ce_RuntimeException, "Call to undefined method %s::%s()", ZSTR_VAL(ce->name), method_name);
-				break;
-
-			default:
-				zephir_throw_exception_format(spl_ce_RuntimeException, "Call to undefined method ?::%s()", method_name);
-		}
-	} else if (EG(exception)) {
-		status = FAILURE;
-	}
-
-	return status;
 }
 
 /**
@@ -564,40 +315,7 @@ int zephir_call_class_method_aparams(zval *return_value, zend_class_entry *ce, z
  */
 int zephir_call_user_func_array_noex(zval *return_value, zval *handler, zval *params)
 {
-	zend_fcall_info fci;
-	zend_fcall_info_cache fci_cache;
-	char *is_callable_error = NULL;
-	int status = FAILURE;
-
-	if (params && Z_TYPE_P(params) != IS_ARRAY) {
-		ZVAL_NULL(return_value);
-		php_error_docref(NULL, E_WARNING, "Invalid arguments supplied for zephir_call_user_func_array_noex()");
-		return FAILURE;
-	}
-
-	zend_fcall_info_init(handler, 0, &fci, &fci_cache, NULL, &is_callable_error);
-
-	if (is_callable_error) {
-		zend_error(E_WARNING, "%s", is_callable_error);
-		efree(is_callable_error);
-	} else {
-		status = SUCCESS;
-	}
-
-	if (status == SUCCESS) {
-		zend_fcall_info_args(&fci, params);
-
-		fci.retval = return_value;
-		zend_call_function(&fci, &fci_cache);
-
-		zend_fcall_info_args_clear(&fci, 1);
-	}
-
-	if (EG(exception)) {
-		status = SUCCESS;
-	}
-
-	return status;
+	return dao_call_user_func_array_noex(return_value, handler, params);
 }
 
 /**
@@ -735,14 +453,14 @@ int dao_call_method_with_params(zval *retval, zval *object, zend_class_entry *ce
 						dao_fast_explode_str_str(&func_name, "::", 2, method_name, method_len);
 					} else {
 						array_init_size(&func_name, 2);
-						add_next_index_string(&func_name, i_parent);
+						add_next_index_stringl(&func_name, "parent", 6);
 						add_next_index_stringl(&func_name, method_name, method_len);
 					}
 					break;
 				case zephir_fcall_self:
 					assert(ce != NULL);
 					array_init_size(&func_name, 2);
-					add_next_index_string(&func_name, i_self);
+					add_next_index_stringl(&func_name, "self", 4);
 					add_next_index_stringl(&func_name, method_name, method_len);
 					break;
 				case zephir_fcall_method:
@@ -752,7 +470,7 @@ int dao_call_method_with_params(zval *retval, zval *object, zend_class_entry *ce
 					add_next_index_stringl(&func_name, method_name, method_len);
 					break;
 				default:
-					zephir_throw_exception_format(spl_ce_RuntimeException, "Error call type %d for cmethod %s", type, method_name);
+					zephir_throw_exception_format(spl_ce_RuntimeException, "Error call type %d for method %s", type, method_name);
 					return FAILURE;
 			}
 		}
@@ -809,6 +527,82 @@ int dao_call_method_with_params(zval *retval, zval *object, zend_class_entry *ce
 			zval_ptr_dtor(&ret);
 		}
 	}
+
+	return status;
+}
+
+int dao_call_user_func_params(zval *retval, zval *handler, int param_count, zval *params[])
+{
+	zval ret = {}, *retval_ptr = (retval != NULL) ? retval : &ret;
+	zval *arguments;
+	int i, status;
+
+	arguments = param_count ? safe_emalloc(sizeof(zval), param_count, 0) : NULL;
+
+	i = 0;
+	while(i < param_count) {
+		if (params[i]) {
+			ZVAL_COPY_VALUE(&arguments[i], params[i]);
+		} else {
+			ZVAL_NULL(&arguments[i]);
+		}
+		i++;
+	}
+
+#if PHP_VERSION_ID >= 70100
+	if ((status = call_user_function(NULL, NULL, handler, retval_ptr, param_count, arguments)) == FAILURE || EG(exception)) {
+		status = FAILURE;
+		ZVAL_NULL(retval_ptr);
+	}
+#else
+	if ((status = call_user_function(EG(function_table), NULL, handler, retval_ptr, param_count, arguments)) == FAILURE || EG(exception)) {
+		status = FAILURE;
+		ZVAL_NULL(retval_ptr);
+	}
+#endif
+
+	efree(arguments);
+
+	return status;
+}
+
+int dao_call_user_func_array(zval *retval, zval *handler, zval *params)
+{
+	zval ret = {}, *retval_ptr = (retval != NULL) ? retval : &ret, *arguments = NULL, *param;
+	int params_count = 0, i, status;
+
+	if (params && Z_TYPE_P(params) != IS_ARRAY && Z_TYPE_P(params) > IS_NULL) {
+		status = FAILURE;
+		php_error_docref(NULL, E_WARNING, "Invalid arguments supplied for dao_call_user_func_array()");
+		return status;
+	}
+
+	if (params && Z_TYPE_P(params) == IS_ARRAY) {
+		params_count = zend_hash_num_elements(Z_ARRVAL_P(params));
+		arguments = (zval*)emalloc(sizeof(zval) * params_count);
+		i = 0;
+		ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(params), param) {
+			ZVAL_COPY_VALUE(&arguments[i], param);
+			i++;
+		} ZEND_HASH_FOREACH_END();
+	} else {
+		params_count = 0;
+		arguments = NULL;
+	}
+
+#if PHP_VERSION_ID >= 70100
+	if ((status = call_user_function(NULL, NULL, handler, retval_ptr, params_count, arguments)) == FAILURE || EG(exception)) {
+		status = FAILURE;
+		ZVAL_NULL(retval_ptr);
+	}
+#else
+	if ((status = call_user_function(EG(function_table), NULL, handler, retval_ptr, params_count, arguments)) == FAILURE || EG(exception)) {
+		status = FAILURE;
+		ZVAL_NULL(retval_ptr);
+	}
+#endif
+
+	efree(arguments);
 
 	return status;
 }
